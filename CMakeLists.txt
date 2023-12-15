@@ -41,9 +41,10 @@ add_subdirectory(paho.mqtt.cpp)
 find_package(Threads)
 find_package(PahoMqttC)
 find_package(OpenSSL)
+find_package(woof)
 
-add_executable(cpp-mqtt main.cpp)
-target_link_libraries( cpp-mqtt 
+add_executable(publish publish.cpp)
+target_link_libraries( publish
         ${CMAKE_THREAD_LIBS_INIT}
         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
@@ -52,7 +53,28 @@ target_link_libraries( cpp-mqtt
         ${CMAKE_DL_LIBS}
         )
 
-add_custom_command(
-            TARGET cpp-mqtt POST_BUILD
-            COMMAND openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost" -keyout tls.key  -out tls.crt
-            VERBATIM)        
+add_executable(consume consume.cpp)
+target_link_libraries( consume
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
+        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
+        ${OPENSSL_SSL_LIBRARIES}
+        ${OPENSSL_CRYPTO_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        )
+
+
+add_executable(multithread multithread.cpp)
+target_link_libraries( multithread
+        ${CMAKE_THREAD_LIBS_INIT}
+        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
+        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
+        ${OPENSSL_SSL_LIBRARIES}
+        ${OPENSSL_CRYPTO_LIBRARIES}
+        ${CMAKE_DL_LIBS}
+        )
+
+# add_custom_command(
+#             TARGET cpp-mqtt POST_BUILD
+#             COMMAND openssl req -new -newkey rsa:2048 -days 365 -nodes -x509 -subj "/C=US/ST=Denial/L=Springfield/O=Dis/CN=localhost" -keyout tls.key  -out tls.crt
+#             VERBATIM)        

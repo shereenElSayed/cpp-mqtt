@@ -39,9 +39,9 @@
 
 using namespace std;
 
-const string SERVER_ADDRESS	{ "mqtt://localhost:1883" };
-const string CLIENT_ID		{ "paho_cpp_async_consume" };
-const string TOPIC = { "command" };
+// const string SERVER_ADDRESS	{ "tcp://localhost:1883" };
+// const string CLIENT_ID		{ "paho_cpp_async_consume" };
+// const string TOPIC = { "command" };
 
 // const vector<string> TOPICS { "data/#", "command" };
 
@@ -49,12 +49,42 @@ const int  QOS = 1;
 
 /////////////////////////////////////////////////////////////////////////////
 
+
+
 int main(int argc, char* argv[])
 {
-	mqtt::async_client cli(SERVER_ADDRESS, CLIENT_ID);
+	char address[500];
+	char clientID[500];
+	auto TOPICS = mqtt::string_collection::create({"general"});
+	const vector<int> QOS;
+
+	while((c = getopt(argc,argv,ARGS)) != EOF) {
+		switch(c) {
+			case 'h':
+				strncpy(address,optarg,sizeof(address));
+				break;
+			case 'c':
+				strncpy(clientID,optarg,sizeof(clientID));
+				break;
+			case 't':
+				char topic_name[1024];
+				strncpy(topic_name,optarg,sizeof(topic_name));
+				std::string str(topic_name);
+				TOPICS.push_back(str);
+				QOS.push_back(1);
+				
+			default:
+				fprintf(stderr,
+				"unrecognized command %c\n",(char)c);
+				fprintf(stderr,"%s",Usage);
+				exit(1);
+		}
+	}
+	auto cli = std::make_shared<mqtt::async_client>(address, CLIENT_ID);
 
 	auto connOpts = mqtt::connect_options_builder()
-		.clean_session(false)
+		.clean_session(true)
+		.automatic_reconnect(seconds(2), seconds(30))
 		.finalize();
 
 	try {
@@ -63,23 +93,13 @@ int main(int argc, char* argv[])
 		cli.start_consuming();
 
 		// Connect to the server
-
-		cout << "Connecting to the MQTT server..." << flush;
-		auto tok = cli.connect(connOpts);
-
-		// Getting the connect response will block waiting for the
-		// connection to complete.
-		auto rsp = tok->get_connect_response();
-
-		// If there is no session present, then we need to subscribe, but if
-		// there is a session, then the server remembers us and our
-		// subscriptions.
+		cout << "Connecting to the MQTT server at " << address << "..." << flush;
+		auto rsp = cli->connect(connOpts)->get_connect_response();
+		cout << "OK\n" << endl;
 		if (!rsp.is_session_present()){
-            cli.subscribe(TOPIC, QOS)->wait();
+            cli->subscribe(TOPICS, QOS);
+            printf("subscribing\n");
         }
-			
-
-		cout << "OK" << endl;
 
 		// Consume messages
 		// This just exits if the client is disconnected.
@@ -89,7 +109,7 @@ int main(int argc, char* argv[])
 
 		while (true) {
 			auto msg = cli.consume_message();
-			if (!msg) break;
+			if (!msg) continue;
 			cout << msg->get_topic() << ": " << msg->to_string() << endl;
 		}
 
@@ -98,7 +118,7 @@ int main(int argc, char* argv[])
 
 		if (cli.is_connected()) {
 			cout << "\nShutting down and disconnecting from the MQTT server..." << flush;
-			cli.unsubscribe(TOPIC)->wait();
+			// cli.unsubscribe(TOPIC)->wait();
             // cli.unsubscribe(TOPIC_2)->wait();
 			cli.stop_consuming();
 			cli.disconnect()->wait();

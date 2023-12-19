@@ -28,14 +28,20 @@
  *    Frank Pagliughi - initial implementation and documentation
  *******************************************************************************/
 
-#include <iostream>
-#include <cstdlib>
-#include <string>
-#include <cstring>
+#include <stdlib.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <string.h>
+// #include <cstring>
 #include <cctype>
-#include <thread>
+// #include <thread>
 #include <chrono>
+#include "cspot_mqtt.h"
+#include <woofc.h>
 #include "mqtt/async_client.h"
+#define _BSD_SOURCE
+
+#include <sys/time.h>
 
 using namespace std;
 
@@ -53,10 +59,13 @@ const int  QOS = 1;
 
 int main(int argc, char* argv[])
 {
+	#define ARGS "h:c:t:"
 	char address[500];
 	char clientID[500];
-	auto TOPICS = mqtt::string_collection::create({"general"});
-	const vector<int> QOS;
+	
+	std::vector<std::string> topics;
+	std::vector<int> QOS;
+	int c;
 
 	while((c = getopt(argc,argv,ARGS)) != EOF) {
 		switch(c) {
@@ -70,27 +79,37 @@ int main(int argc, char* argv[])
 				char topic_name[1024];
 				strncpy(topic_name,optarg,sizeof(topic_name));
 				std::string str(topic_name);
-				TOPICS.push_back(str);
+				topics.push_back(str);
 				QOS.push_back(1);
-				
-			default:
-				fprintf(stderr,
-				"unrecognized command %c\n",(char)c);
-				fprintf(stderr,"%s",Usage);
-				exit(1);
+				break;
 		}
 	}
-	auto cli = std::make_shared<mqtt::async_client>(address, CLIENT_ID);
+
+	WooFInit();
+	int err;
+	for(auto topic : topics){
+		err = WooFCreate(topic.c_str(), sizeof(EL), 1025); /**/
+		if (err < 0)
+		{
+			fprintf(stderr, "WooFCreate for %s\n",topic.c_str());
+			fflush(stderr);
+			exit(1);
+		}
+	}
+
+
+	auto TOPICS = mqtt::string_collection::create(topics);
+	auto cli = std::make_shared<mqtt::async_client>(address, clientID);
 
 	auto connOpts = mqtt::connect_options_builder()
 		.clean_session(true)
-		.automatic_reconnect(seconds(2), seconds(30))
+		.automatic_reconnect(std::chrono::seconds(2), std::chrono::seconds(30))
 		.finalize();
 
 	try {
 		// Start consumer before connecting to make sure to not miss messages
 
-		cli.start_consuming();
+		cli->start_consuming();
 
 		// Connect to the server
 		cout << "Connecting to the MQTT server at " << address << "..." << flush;
@@ -106,27 +125,52 @@ int main(int argc, char* argv[])
 		// (See some other examples for auto or manual reconnect)
 
 		// cout << "Waiting for messages on topic: '" << TOPIC << "'" << endl;
+		struct timeval  tv;
+		gettimeofday(&tv,NULL);
+		double start=((double)((double)tv.tv_sec + (double)tv.tv_usec/1000000.0));
+		printf("Start time: %f ms", start*1000);
+		fflush(stdout);
+		double time;
+
 
 		while (true) {
-			auto msg = cli.consume_message();
+			auto msg = cli->consume_message();
 			if (!msg) continue;
+			
+			//<CAP_TOKEN>:......<ID_TOKEN>:....<MESSAGE>:value
 			cout << msg->get_topic() << ": " << msg->to_string() << endl;
+			std::string msg_str = msg->to_string();
+			// int cap_token_index = msg_str.rfind("<CAP_TOKEN");
+			int id_token_index = msg_str.find("<ID_TOKEN>:");
+			int message_index = msg_str.find("<MESSAGE>:");
+			//printf("id_token_index: %c  message_index : %c\n", msg_str[ id_token_index], msg_str[ message_index]); 
+			std::string cap_token = msg_str.substr(11,id_token_index-11);
+			// printf("cap_token: %s\n",cap_token.c_str());
+			std::string id_token = msg_str.substr(id_token_index+11, message_index-id_token_index-11);
+			// printf("id_token: %s\n",id_token.c_str());
+			int value = atoi(msg_str.substr(message_index+10).c_str());
+			
+			gettimeofday(&tv,NULL);
+			time =((double)((double)tv.tv_sec + (double)tv.tv_usec/1000000.0));
+			EL element;
+			element.start_time = time*1000;
+			element.value = value;
+			err = WooFPutWithToken(cap_token.c_str(), id_token.c_str(), msg->get_topic().c_str(), (msg->get_topic()+"_handler").c_str(),(void *)&element);
+
+			if(WooFInvalid(err)) {
+				fprintf(stderr,"Failed to put\n");
+				break;
+			}
+
 		}
 
 		// If we're here, the client was almost certainly disconnected.
 		// But we check, just to make sure.
 
-		if (cli.is_connected()) {
-			cout << "\nShutting down and disconnecting from the MQTT server..." << flush;
-			// cli.unsubscribe(TOPIC)->wait();
-            // cli.unsubscribe(TOPIC_2)->wait();
-			cli.stop_consuming();
-			cli.disconnect()->wait();
-			cout << "OK" << endl;
-		}
-		else {
-			cout << "\nClient was disconnected" << endl;
-		}
+		
+		cout << "\nClient was disconnected" << endl;
+		cli->disconnect();
+		cout << "OK" << endl;
 	}
 	catch (const mqtt::exception& exc) {
 		cerr << "\n  " << exc << endl;

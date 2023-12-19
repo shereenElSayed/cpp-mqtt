@@ -42,16 +42,18 @@ find_package(Threads)
 find_package(PahoMqttC)
 find_package(OpenSSL)
 find_package(woof)
+find_package(caplets)
 
-add_executable(publish publish.cpp)
-target_link_libraries( publish
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
-        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
-        ${OPENSSL_SSL_LIBRARIES}
-        ${OPENSSL_CRYPTO_LIBRARIES}
-        ${CMAKE_DL_LIBS}
-        )
+# add_executable(publish publish.cpp)
+# target_link_libraries( publish
+#         ${CMAKE_THREAD_LIBS_INIT}
+#         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
+#         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
+#         ${OPENSSL_SSL_LIBRARIES}
+#         ${OPENSSL_CRYPTO_LIBRARIES}
+#         ${CMAKE_DL_LIBS}
+#         )
+# add_handler(laptop_handler laptop_handler.cpp)
 
 add_executable(consume consume.cpp)
 target_link_libraries( consume
@@ -60,19 +62,18 @@ target_link_libraries( consume
         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
         ${OPENSSL_SSL_LIBRARIES}
         ${OPENSSL_CRYPTO_LIBRARIES}
-        ${CMAKE_DL_LIBS}
+        ${CMAKE_DL_LIBS} woof caplets
         )
-
-
-add_executable(multithread multithread.cpp)
-target_link_libraries( multithread
-        ${CMAKE_THREAD_LIBS_INIT}
-        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
-        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
-        ${OPENSSL_SSL_LIBRARIES}
-        ${OPENSSL_CRYPTO_LIBRARIES}
-        ${CMAKE_DL_LIBS}
-        )
+add_executable(read_log read_log.cpp) 
+target_link_libraries( read_log                                                                                                                                                                           ${CMAKE_THREAD_LIBS_INIT}                                                                                                                                                                        ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a                                                                                                                                  ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a                                                                                                                                    ${OPENSSL_SSL_LIBRARIES}                                                                                                                                                                         ${OPENSSL_CRYPTO_LIBRARIES}                                                                                                                                                                      ${CMAKE_DL_LIBS} woof caplets                                                                                                                                                                    )# add_executable(multithread multithread.cpp)
+# target_link_libraries( multithread
+#         ${CMAKE_THREAD_LIBS_INIT}
+#         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.cpp/src/libpaho-mqttpp3.a
+#         ${PROJECT_SOURCE_DIR}/build/paho.mqtt.c/src/libpaho-mqtt3as.a
+#         ${OPENSSL_SSL_LIBRARIES}
+#         ${OPENSSL_CRYPTO_LIBRARIES}
+#         ${CMAKE_DL_LIBS}
+#         )
 
 # add_custom_command(
 #             TARGET cpp-mqtt POST_BUILD

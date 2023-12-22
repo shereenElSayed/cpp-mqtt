@@ -53,7 +53,7 @@ find_package(caplets)
 #         ${OPENSSL_CRYPTO_LIBRARIES}
 #         ${CMAKE_DL_LIBS}
 #         )
-# add_handler(laptop_handler laptop_handler.cpp)
+add_handler(laptop_handler laptop_handler.cpp)
 
 add_executable(consume consume.cpp)
 target_link_libraries( consume
